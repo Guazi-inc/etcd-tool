@@ -237,6 +237,11 @@ func WithCustomWatch(key string, fs ...func()) {
 }
 
 func runWatchFuncs(key string) {
+	defer func() {
+		if r := recover(); r != nil {
+			logrus.Errorf("got panic when running watch function with key: %s, panic: %+v", key, r)
+		}
+	}()
 	watchFunc.Range(func(k, v interface{}) bool {
 		if strings.HasPrefix(key, k.(string)) {
 			if fs, ok := v.([]func()); ok {
