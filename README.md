@@ -4,7 +4,7 @@
 * 复制etcd的数据
 * 从etcd读取配置
 
-[TOC]
+
 ## 配置读取
 
 ### key-value结构
