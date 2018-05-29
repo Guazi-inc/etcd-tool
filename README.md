@@ -4,3 +4,48 @@
 * 复制etcd的数据
 * 从etcd读取配置
 
+
+##配置读取
+
+###key-value结构
+对于下面redis的配置，转化为两对etcd中key-value
+```json
+{
+    "redis": {
+        "address": "localhost:6379",
+        "prefix": "test"
+    }
+}
+
+"/redis/address": "localhost:2379"
+"/redis/prefix": "test"
+```
+
+
+###SDK使用
+####设置etcd的地址
+方案一：环境变量 
+```shell
+ETCD_ADDR=localhost:2379
+```
+方案二：调用函数 
+```go
+import "github.com/Guazi-inc/etcd-tool/config"
+
+config.InitETCD("localhost:2379")
+```
+
+####Get Config
+```go
+import "github.com/Guazi-inc/etcd-tool/config"
+
+
+var cfg struct{
+    Address string `json:"address"`
+    Prefix string `json:"prefix"`
+}
+
+err := config.Get("/redis", &cfg)
+
+```
+
