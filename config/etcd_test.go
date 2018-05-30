@@ -6,6 +6,8 @@ import (
 
 	"time"
 
+	"fmt"
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -38,6 +40,17 @@ func TestGet(t *testing.T) {
 	}
 	{
 		var cfg struct {
+			AnsweringTimeout int                `json:"answering_timeout"`
+			Enabled          bool               `json:"enabled"`
+			Gray             *map[string]string `json:"gray"`
+		}
+		fmt.Println(cfg.Gray == nil)
+		err := Get("/call/call_in", &cfg)
+		assert.Nil(t, err)
+		t.Log(cfg, cfg.Gray)
+	}
+	{
+		var cfg struct {
 			AnsweringTimeout int  `json:"answering_timeout"`
 			Enabled          bool `json:"enabled"`
 			Gray             *struct {
@@ -48,6 +61,15 @@ func TestGet(t *testing.T) {
 		err := Get("/call/call_in", &cfg)
 		assert.Nil(t, err)
 		t.Log(cfg, cfg.Gray)
+	}
+	{
+		var cfg struct {
+			Ids  *[]int `json:"ids"`
+			Type string `json:"type"`
+		}
+		err := Get("/call/call_in/gray", &cfg)
+		assert.Nil(t, err)
+		t.Log(cfg, cfg.Ids)
 	}
 	{
 		var ids []int32

@@ -142,7 +142,13 @@ func fillConfig(result interface{}, ct reflect.Type, cv reflect.Value) error {
 	}
 	if ct.Kind() == reflect.Ptr {
 		if cv.IsNil() {
-			cv.Set(reflect.New(ct.Elem()))
+			switch ct.Elem().Kind() {
+			case reflect.Map:
+				cv.Set(reflect.New(ct.Elem()))
+				cv.Elem().Set(reflect.MakeMap(ct.Elem()))
+			default:
+				cv.Set(reflect.New(ct.Elem()))
+			}
 		}
 		ct = ct.Elem()
 		cv = cv.Elem()
