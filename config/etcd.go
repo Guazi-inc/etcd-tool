@@ -46,21 +46,23 @@ func InitETCD(addr string) {
 }
 
 func Get(key string, config interface{}) error {
-	ct := reflect.TypeOf(config).Elem().Kind()
-	switch ct {
+	ct := reflect.TypeOf(config).Elem()
+	cv := reflect.ValueOf(config).Elem()
+
+	switch ct.Kind() {
 	case reflect.Struct, reflect.Map:
 		result, err := getKvsMapWithCache(key)
 		if err != nil {
 			return err
 		}
-		return fillConfig(result, reflect.TypeOf(config).Elem(), reflect.ValueOf(config).Elem())
+		return fillConfig(result, ct, cv)
 	default:
 		val, err := getValWithCache(key)
 		if err != nil {
 			return err
 		}
 		err = json.Unmarshal([]byte(val), config)
-		if err != nil && ct == reflect.String {
+		if err != nil && ct.Kind() == reflect.String {
 			*config.(*string) = val
 			return nil
 		}
@@ -135,7 +137,13 @@ func fillConfig(result interface{}, ct reflect.Type, cv reflect.Value) error {
 		return errors.Errorf("invalid type: %s, value: %s", ct.String(), cv.String())
 	}
 
+	if ct.Kind() == reflect.Map && cv.IsNil() {
+		cv.Set(reflect.MakeMap(ct))
+	}
 	if ct.Kind() == reflect.Ptr {
+		if cv.IsNil() {
+			cv.Set(reflect.New(ct.Elem()))
+		}
 		ct = ct.Elem()
 		cv = cv.Elem()
 	}

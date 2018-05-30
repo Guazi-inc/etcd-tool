@@ -1,9 +1,9 @@
 package config
 
 import (
-	"fmt"
 	"os"
 	"testing"
+
 	"time"
 
 	"github.com/stretchr/testify/assert"
@@ -14,18 +14,46 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-func TestGetConfig(t *testing.T) {
-	WithCustomWatch("/test", func() {
-		fmt.Println(time.Now(), "key event")
-	}, func() {
-		fmt.Println(time.Now(), "key event2")
-	})
+func TestGet(t *testing.T) {
+	//WithCustomWatch("/test", func() {
+	//	fmt.Println(time.Now(), "key event")
+	//}, func() {
+	//	fmt.Println(time.Now(), "key event2")
+	//})
 	{
-		//var cfg config.CommapiConfig
-		var cfg = map[string]string{}
+		var cfg map[string]string
 		err := Get("/call/permission_http", &cfg)
 		assert.Nil(t, err)
 		t.Log(cfg)
+	}
+	{
+		var cfg struct {
+			AnsweringTimeout int               `json:"answering_timeout"`
+			Enabled          bool              `json:"enabled"`
+			Gray             map[string]string `json:"gray"`
+		}
+		err := Get("/call/call_in", &cfg)
+		assert.Nil(t, err)
+		t.Log(cfg)
+	}
+	{
+		var cfg struct {
+			AnsweringTimeout int  `json:"answering_timeout"`
+			Enabled          bool `json:"enabled"`
+			Gray             *struct {
+				Ids  []int  `json:"ids"`
+				Type string `json:"type"`
+			} `json:"gray"`
+		}
+		err := Get("/call/call_in", &cfg)
+		assert.Nil(t, err)
+		t.Log(cfg, cfg.Gray)
+	}
+	{
+		var ids []int32
+		err := Get("/call/call_in/gray/ids", &ids)
+		assert.Nil(t, err)
+		t.Log(ids)
 	}
 	{
 		var cfg struct {
@@ -61,18 +89,21 @@ func TestGetConfig(t *testing.T) {
 		etcdClient.DeleteWithPrefix("/test")
 		etcdClient.Put("/test/true", "true")
 		etcdClient.Put("/test/false", "false")
+		time.Sleep(1000 * time.Millisecond)
 		var cfg = map[bool]bool{}
 		err := Get("/test", &cfg)
 		assert.Nil(t, err)
 		t.Log(cfg)
 
 		etcdClient.Put("/test", "true")
+		time.Sleep(1000 * time.Millisecond)
 		var cfg2 string
 		err = Get("/test", &cfg2)
 		assert.Nil(t, err)
 		t.Log(cfg2)
 
 		etcdClient.Put("/test", "true")
+		time.Sleep(1000 * time.Millisecond)
 		var cfg3 bool
 		err = Get("/test", &cfg3)
 		assert.Nil(t, err)
