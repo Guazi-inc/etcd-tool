@@ -46,6 +46,10 @@ func InitETCD(addr string) {
 }
 
 func Get(key string, config interface{}) error {
+	if !isValidKey(key) {
+		return errors.New("invalid key")
+	}
+
 	ct := reflect.TypeOf(config).Elem()
 	cv := reflect.ValueOf(config).Elem()
 
@@ -99,11 +103,23 @@ func getKvsMapWithCache(key string) (map[string]interface{}, error) {
 }
 
 func getKvsMap(key string) (map[string]interface{}, error) {
+	if !strings.HasSuffix(key, delimiter) {
+		key = key + delimiter
+	}
 	kvs, err := etcdClient.GetWithPrefix(key)
 	if err != nil || len(kvs) == 0 {
 		return nil, err
 	}
+	for k := range kvs {
+		if !isValidKey(k) {
+			delete(kvs, k)
+		}
+	}
 	return parseKvs(key, kvs), nil
+}
+
+func isValidKey(key string) bool {
+	return strings.HasPrefix(key, delimiter) && !strings.HasSuffix(key, delimiter) && !strings.Contains(key, "//")
 }
 
 func parseKvs(baseKey string, kvs map[string]string) map[string]interface{} {
@@ -217,6 +233,9 @@ func Watch() {
 	for w := range wc {
 		for _, ev := range w.Events {
 			logrus.Infof("ETCD %s KEY %s", ev.Type, string(ev.Kv.Key))
+			if !isValidKey(string(ev.Kv.Key)) {
+				continue
+			}
 			if _, ok := kvCache.Load(string(ev.Kv.Key)); ok {
 				kvCache.Store(string(ev.Kv.Key), string(ev.Kv.Value))
 			}
@@ -251,6 +270,7 @@ func WithCustomWatch(key string, fs ...func()) {
 }
 
 func runWatchFuncs(key string) {
+	logrus.Infof("run watch funcs with key: %s", key)
 	defer func() {
 		if r := recover(); r != nil {
 			logrus.Errorf("got panic when running watch function with key: %s, panic: %+v", key, r)
@@ -264,7 +284,7 @@ func runWatchFuncs(key string) {
 				}
 			}
 		}
-		return false
+		return true
 	})
 }
 
