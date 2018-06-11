@@ -267,6 +267,7 @@ func WithCustomWatch(key string, fs ...func()) {
 		}
 	}
 	watchFunc.Store(key, fs)
+	logrus.Infof("watch function registered with key: %s", key)
 }
 
 func runWatchFuncs(key string) {
