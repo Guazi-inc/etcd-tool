@@ -61,3 +61,18 @@ config.WithCustomWatch("/redis", func() {})
 ```
 
 
+#### 配置检查
+    在程序启动前通过调用下面方法可以进行配置检查，若不满足条件则会panic
+
+```go
+import "github.com/Guazi-inc/etcd-tool/config"
+
+//若存在值为空的key，则会panic
+keys := []string{"/test/key1"}
+
+//若以key为前缀没有数据，则会panic
+keysWithPrefix := []string{"/test/dir"}
+
+config.CheckKeys(keys, keysWithPrefix)
+
+```
