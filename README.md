@@ -23,7 +23,7 @@
 
 
 ### SDK使用
-#### 设置etcd的地址
+#### 设置etcd的连接地址: username:password@addr1,addr2
 方案一：环境变量 
 ```shell
 ETCD_ADDR=localhost:2379
