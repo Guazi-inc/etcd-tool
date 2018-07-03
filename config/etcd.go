@@ -189,7 +189,9 @@ func fillConfig(result interface{}, ct reflect.Type, cv reflect.Value) error {
 				if key == "" || !ok {
 					continue
 				}
-				fillConfig(val, ct.Field(index).Type, cv.Field(index))
+				if err := fillConfig(val, ct.Field(index).Type, cv.Field(index)); err != nil {
+					return err
+				}
 			}
 		case reflect.Map:
 			for key, value := range res {
