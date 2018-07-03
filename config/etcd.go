@@ -37,7 +37,7 @@ func init() {
 func InitETCD(addr string) {
 	cli, err := client.NewClient(addr)
 	if err != nil {
-		panic(err)
+		panic(fmt.Sprintf("Failed to connect etcd %s , Error: %s", addr, err.Error()))
 	}
 	initOnce.Do(func() {
 		etcdClient = cli
