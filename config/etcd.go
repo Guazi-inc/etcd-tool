@@ -188,7 +188,7 @@ func fillConfig(result interface{}, ct reflect.Type, cv reflect.Value) error {
 		if err := json.Unmarshal([]byte(res), cv.Addr().Interface()); err != nil {
 			if ct.Kind() == reflect.String {
 				cv.SetString(res)
-			} else {
+			} else if ct.Kind() != reflect.Map && ct.Kind() != reflect.Struct {
 				return err
 			}
 		}
