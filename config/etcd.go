@@ -42,10 +42,17 @@ func InitETCD(addr string) {
 		}
 		etcdClient = cli
 		go Watch()
+		logrus.Infof("init ETCD client with addr: %s", addr)
 	})
 }
 
 func Get(key string, config interface{}) error {
+	err := get(key, config)
+	logrus.Infof("ETCD: get config with key: %s, Err: %+v", key, err)
+	return err
+}
+
+func get(key string, config interface{}) error {
 	if !isValidKey(key) {
 		return errors.New("invalid key")
 	}
