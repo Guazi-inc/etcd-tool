@@ -59,11 +59,17 @@ func Get(key string, config interface{}) error {
 		if err != nil {
 			return err
 		}
+		if len(result) == 0 {
+			return errors.New("kvs is empty")
+		}
 		return fillConfig(result, ct, cv)
 	default:
 		val, err := getValWithCache(key)
 		if err != nil {
 			return err
+		}
+		if val == "" {
+			return nil
 		}
 		err = json.Unmarshal([]byte(val), config)
 		if err != nil && ct.Kind() == reflect.String {
