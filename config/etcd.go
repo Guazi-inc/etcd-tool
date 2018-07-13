@@ -298,7 +298,6 @@ func WithCustomWatch(key string, fs ...func()) {
 }
 
 func runWatchFuncs(key string) {
-	logrus.Infof("run watch funcs with key: %s", key)
 	defer func() {
 		if r := recover(); r != nil {
 			logrus.Errorf("got panic when running watch function with key: %s, panic: %+v", key, r)
@@ -314,6 +313,7 @@ func runWatchFuncs(key string) {
 		}
 		return true
 	})
+	logrus.Infof("run watch funcs with key: %s success", key)
 }
 
 func CheckKeys(keys, keysWithPrefix []string) {
