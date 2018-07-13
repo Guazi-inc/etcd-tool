@@ -8,6 +8,7 @@ import (
 
 	"fmt"
 
+	"github.com/json-iterator/go"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -140,4 +141,31 @@ func TestGet(t *testing.T) {
 	}
 
 	//time.Sleep(time.Minute)
+}
+
+func TestGet2(t *testing.T) {
+	{
+		key := "/wby/test_key"
+		var val = map[string]string{
+			"key":  "val",
+			"key2": "val2",
+			"key3": "val3",
+		}
+		bytes, err := jsoniter.Marshal(val)
+		assert.Nil(t, err)
+		etcdClient.Put(key, string(bytes))
+		var cfg map[string]string
+		err = Get(key, &cfg)
+		assert.Nil(t, err)
+		assert.Equal(t, cfg, val)
+	}
+	{
+		key := "/wby/test_key"
+		err := etcdClient.DeleteWithPrefix(key)
+		assert.Nil(t, err)
+		var cfg map[string]string
+		err = Get(key, &cfg)
+		assert.Equal(t, err, ErrKvsEmpty)
+	}
+
 }

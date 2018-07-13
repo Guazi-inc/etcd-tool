@@ -15,16 +15,16 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"strings"
 
+	"github.com/Guazi-inc/etcd-tool/client"
 	"github.com/go-errors/errors"
+	"github.com/json-iterator/go"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"github.com/Guazi-inc/etcd-tool/client"
 )
 
 // putCmd represents the put command
@@ -89,7 +89,7 @@ func (p *PutArg) Run() error {
 		return err
 	}
 	confMap := map[string]interface{}{}
-	err = json.Unmarshal(bytes, &confMap)
+	err = jsoniter.Unmarshal(bytes, &confMap)
 	if err != nil {
 		return err
 	}
@@ -209,7 +209,7 @@ func (p *PutArg) parseKeyValue(confMap map[string]interface{}, baseKey string) e
 				p.DelKeys = append(p.DelKeys, fullKey)
 			}
 		default:
-			buf, err := json.Marshal(val)
+			buf, err := jsoniter.Marshal(val)
 			if err != nil {
 				return err
 			}

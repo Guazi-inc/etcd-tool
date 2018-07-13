@@ -2,7 +2,6 @@ package config
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"reflect"
@@ -11,12 +10,18 @@ import (
 
 	"github.com/Guazi-inc/etcd-tool/client"
 	"github.com/coreos/etcd/clientv3"
+	"github.com/json-iterator/go"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
 
 const (
 	delimiter = "/"
+)
+
+var (
+	ErrKvsEmpty   = errors.New("kvs is empty")
+	ErrInvalidKey = errors.New("invalid key")
 )
 
 var (
@@ -54,7 +59,7 @@ func Get(key string, config interface{}) error {
 
 func get(key string, config interface{}) error {
 	if !isValidKey(key) {
-		return errors.New("invalid key")
+		return ErrInvalidKey
 	}
 
 	ct := reflect.TypeOf(config).Elem()
@@ -66,8 +71,15 @@ func get(key string, config interface{}) error {
 		if err != nil {
 			return err
 		}
+		//若with prefix为空，尝试unmarshal key上的值
 		if len(result) == 0 {
-			return errors.New("kvs is empty")
+			val, err := getValWithCache(key)
+			if err == nil && val != "" {
+				if err := jsoniter.Unmarshal([]byte(val), config); err == nil {
+					return nil
+				}
+			}
+			return ErrKvsEmpty
 		}
 		return fillConfig(result, ct, cv)
 	default:
@@ -78,7 +90,7 @@ func get(key string, config interface{}) error {
 		if val == "" {
 			return nil
 		}
-		err = json.Unmarshal([]byte(val), config)
+		err = jsoniter.Unmarshal([]byte(val), config)
 		if err != nil && ct.Kind() == reflect.String {
 			*config.(*string) = val
 			return nil
@@ -185,7 +197,7 @@ func fillConfig(result interface{}, ct reflect.Type, cv reflect.Value) error {
 
 	switch res := result.(type) {
 	case string:
-		if err := json.Unmarshal([]byte(res), cv.Addr().Interface()); err != nil {
+		if err := jsoniter.Unmarshal([]byte(res), cv.Addr().Interface()); err != nil {
 			if ct.Kind() == reflect.String {
 				cv.SetString(res)
 			} else if ct.Kind() != reflect.Map && ct.Kind() != reflect.Struct {
@@ -215,7 +227,7 @@ func fillConfig(result interface{}, ct reflect.Type, cv reflect.Value) error {
 						return err
 					}
 				case string:
-					if err := json.Unmarshal([]byte(vv), vm.Interface()); err != nil {
+					if err := jsoniter.Unmarshal([]byte(vv), vm.Interface()); err != nil {
 						if ct.Elem().Kind() == reflect.String {
 							vm.Elem().SetString(vv)
 						} else {
@@ -226,7 +238,7 @@ func fillConfig(result interface{}, ct reflect.Type, cv reflect.Value) error {
 					return errors.New("unknow result type")
 				}
 				kt := reflect.New(ct.Key())
-				if err := json.Unmarshal([]byte(key), kt.Interface()); err != nil {
+				if err := jsoniter.Unmarshal([]byte(key), kt.Interface()); err != nil {
 					if ct.Key().Kind() == reflect.String {
 						kt.Elem().SetString(key)
 					} else {
@@ -261,7 +273,7 @@ func Watch() {
 				if _, ok := kvsMapCache.Load(k); ok {
 					if result, err := getKvsMap(k); err == nil {
 						kvsMapCache.Store(k, result)
-						bytes, _ := json.Marshal(result)
+						bytes, _ := jsoniter.Marshal(result)
 						if len(bytes) > 72 {
 							bytes = append(bytes[0:72], byte(46), byte(46), byte(46))
 						}
