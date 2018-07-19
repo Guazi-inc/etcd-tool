@@ -20,20 +20,22 @@ const (
 )
 
 var (
-	ErrKvsEmpty             = errors.New("kvs is empty")
-	ErrInvalidKey           = errors.New("parameter 'key' is invalid")
-	ErrConfigNonPointer     = errors.New("parameter 'config' is not a pointer")
-	ErrConfigPointToPointer = errors.New("parameter 'config' can't point to a pointer")
-	ErrConfigNilPointer     = errors.New("parameter 'config' is a nil pointer")
-	ErrUnknowResult         = errors.New("unknow result type")
+	ErrKvsEmpty       = errors.New("kvs is empty")
+	ErrInvalidKey     = errors.New("Invalid parameter: 'key' is invalid")
+	ErrInvalidNpLevel = errors.New("Invalid parameter: 'namespaceLevel' is invalid")
+	ErrConfigNonPtr   = errors.New("Invalid parameter: 'config' is not a pointer")
+	ErrConfigPtToPtr  = errors.New("Invalid parameter: 'config' can't point to a pointer")
+	ErrConfigNilPtr   = errors.New("Invalid parameter: 'config' is a nil pointer")
+	ErrUnknowResult   = errors.New("unknow result type")
 )
 
 var (
-	etcdClient  *client.Client
-	kvsMapCache sync.Map
-	kvCache     sync.Map
-	watchFunc   sync.Map
-	initOnce    sync.Once
+	etcdClient    *client.Client
+	kvsMapCache   sync.Map
+	kvCache       sync.Map
+	watchFunc     sync.Map
+	initOnce      sync.Once
+	namespaceList []string
 )
 
 func init() {
@@ -43,6 +45,9 @@ func init() {
 	}
 }
 
+/* InitETCD 初始化etcd client，namespace
+ * addr: username:password@addr1,addr2/namespace
+ */
 func InitETCD(addr string) {
 	initOnce.Do(func() {
 		cli, err := client.NewClient(addr)
@@ -51,33 +56,67 @@ func InitETCD(addr string) {
 		}
 		etcdClient = cli
 		go Watch()
-		logrus.Infof("init ETCD client with addr: %s", addr)
+		logrus.Infof("Init ETCD client with addr: %s", addr)
+
+		//init namespace
+		cfg := client.ParseDSN(addr)
+		if cfg.Path != "" && cfg.Path != delimiter {
+			namespaceList = strings.Split(strings.TrimSuffix(strings.TrimPrefix(cfg.Path, delimiter), delimiter), delimiter)
+		}
+		logrus.Infof("Init ETCD namespace: %+v", namespaceList)
 	})
 }
 
+/* Get 获取配置
+ * key: etcd中的完整路径
+ * config: pointer of config struct
+ */
 func Get(key string, config interface{}) error {
-	err := get(key, config)
-	logrus.Infof("ETCD: get config with key: %s, Err: %+v", key, err)
-	return err
+	return get(key, config)
 }
 
-func get(key string, config interface{}) error {
-	if !isValidKey(key) {
+/* GetInNamespace 在某个namespace下获取配置
+ * key: namespace下的部分路径
+ * config: pointer of config struct
+ * namespaceLevel: 在key之前拼接n级namespace，0等同于完整路径
+ */
+func GetInNamespace(key string, config interface{}, namespaceLevel int) error {
+	if key = formatKey(key); key == "" {
+		return ErrInvalidKey
+	}
+	if namespaceLevel < 0 {
+		return ErrInvalidNpLevel
+	}
+	if namespaceLevel > len(namespaceList) {
+		logrus.Panicf("can't add %d level namespace, only has %d level: %+v", namespaceLevel, len(namespaceList), namespaceList)
+	}
+	if namespaceLevel > 0 {
+		key = fmt.Sprintf("%s%s%s", delimiter, strings.Join(namespaceList[:namespaceLevel], delimiter), key)
+	}
+	return get(key, config)
+}
+
+func get(key string, config interface{}) (errRet error) {
+	defer func() {
+		logrus.Infof("ETCD: get config with key: %s, Err: %+v", key, errRet)
+	}()
+
+	if key = formatKey(key); key == "" {
 		return ErrInvalidKey
 	}
 
 	if reflect.TypeOf(config).Kind() != reflect.Ptr {
-		return ErrConfigNonPointer
+		return ErrConfigNonPtr
 	}
 	if reflect.ValueOf(config).IsNil() {
-		return ErrConfigNilPointer
+		return ErrConfigNilPtr
 	}
 
 	ct := reflect.TypeOf(config).Elem()
 	cv := reflect.ValueOf(config).Elem()
 
 	if ct.Kind() == reflect.Ptr {
-		return ErrConfigPointToPointer
+		return ErrConfigPtToPtr
 	}
 
 	switch ct.Kind() {
@@ -112,6 +151,23 @@ func get(key string, config interface{}) error {
 		}
 		return err
 	}
+}
+
+func isValidKey(key string) bool {
+	return strings.HasPrefix(key, delimiter) && !strings.HasSuffix(key, delimiter) && !strings.Contains(key, "//")
+}
+
+func formatKey(key string) string {
+	if !strings.HasPrefix(key, delimiter) {
+		key = delimiter + key
+	}
+	if key != delimiter {
+		key = strings.TrimSuffix(key, delimiter)
+	}
+	if strings.Contains(key, "//") {
+		return ""
+	}
+	return key
 }
 
 func getValWithCache(key string) (string, error) {
@@ -156,10 +212,6 @@ func getKvsMap(key string) (map[string]interface{}, error) {
 		}
 	}
 	return parseKvs(key, kvs), nil
-}
-
-func isValidKey(key string) bool {
-	return strings.HasPrefix(key, delimiter) && !strings.HasSuffix(key, delimiter) && !strings.Contains(key, "//")
 }
 
 func parseKvs(baseKey string, kvs map[string]string) map[string]interface{} {
@@ -340,7 +392,7 @@ func CheckKeys(keys, keysWithPrefix []string) {
 
 	for _, k := range keysWithPrefix {
 		if m, err := etcdClient.GetWithPrefix(k); err != nil || len(m) == 0 {
-			panic(fmt.Sprintf("empty key with prefix: %s, Err: %s", k, err))
+			panic(fmt.Sprintf("empty key with namespaceList: %s, Err: %s", k, err))
 		}
 	}
 }
