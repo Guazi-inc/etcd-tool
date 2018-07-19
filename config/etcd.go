@@ -20,8 +20,12 @@ const (
 )
 
 var (
-	ErrKvsEmpty   = errors.New("kvs is empty")
-	ErrInvalidKey = errors.New("invalid key")
+	ErrKvsEmpty             = errors.New("kvs is empty")
+	ErrInvalidKey           = errors.New("parameter 'key' is invalid")
+	ErrConfigNonPointer     = errors.New("parameter 'config' is not a pointer")
+	ErrConfigPointToPointer = errors.New("parameter 'config' can't point to a pointer")
+	ErrConfigNilPointer     = errors.New("parameter 'config' is a nil pointer")
+	ErrUnknowResult         = errors.New("unknow result type")
 )
 
 var (
@@ -43,7 +47,7 @@ func InitETCD(addr string) {
 	initOnce.Do(func() {
 		cli, err := client.NewClient(addr)
 		if err != nil {
-			panic(fmt.Sprintf("Failed to connect etcd %s , Error: %s", addr, err.Error()))
+			panic(fmt.Sprintf("Failed to connect etcd %s, Error: %s", addr, err.Error()))
 		}
 		etcdClient = cli
 		go Watch()
@@ -62,8 +66,19 @@ func get(key string, config interface{}) error {
 		return ErrInvalidKey
 	}
 
+	if reflect.TypeOf(config).Kind() != reflect.Ptr {
+		return ErrConfigNonPointer
+	}
+	if reflect.ValueOf(config).IsNil() {
+		return ErrConfigNilPointer
+	}
+
 	ct := reflect.TypeOf(config).Elem()
 	cv := reflect.ValueOf(config).Elem()
+
+	if ct.Kind() == reflect.Ptr {
+		return ErrConfigPointToPointer
+	}
 
 	switch ct.Kind() {
 	case reflect.Struct, reflect.Map:
@@ -235,7 +250,7 @@ func fillConfig(result interface{}, ct reflect.Type, cv reflect.Value) error {
 						}
 					}
 				default:
-					return errors.New("unknow result type")
+					return ErrUnknowResult
 				}
 				kt := reflect.New(ct.Key())
 				if err := jsoniter.Unmarshal([]byte(key), kt.Interface()); err != nil {
@@ -249,7 +264,7 @@ func fillConfig(result interface{}, ct reflect.Type, cv reflect.Value) error {
 			}
 		}
 	default:
-		return errors.New("unknow result type")
+		return ErrUnknowResult
 	}
 
 	return nil

@@ -1,12 +1,10 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"testing"
-
 	"time"
-
-	"fmt"
 
 	"github.com/json-iterator/go"
 	"github.com/stretchr/testify/assert"
@@ -93,6 +91,7 @@ func TestGet(t *testing.T) {
 		etcdClient.DeleteWithPrefix("/test")
 		etcdClient.Put("/test/1", "asd")
 		etcdClient.Put("/test/2", "\"zxc\"")
+		time.Sleep(1000 * time.Millisecond)
 		var cfg = map[int]string{}
 		err := Get("/test", &cfg)
 		assert.Nil(t, err)
@@ -103,6 +102,7 @@ func TestGet(t *testing.T) {
 		etcdClient.DeleteWithPrefix("/test")
 		etcdClient.Put("/test/1", "true")
 		etcdClient.Put("/test/2", "false")
+		time.Sleep(1000 * time.Millisecond)
 		var cfg = map[int]bool{}
 		err := Get("/test", &cfg)
 		assert.Nil(t, err)
@@ -154,6 +154,7 @@ func TestGet2(t *testing.T) {
 		bytes, err := jsoniter.Marshal(val)
 		assert.Nil(t, err)
 		etcdClient.Put(key, string(bytes))
+		time.Sleep(1000 * time.Millisecond)
 		var cfg map[string]string
 		err = Get(key, &cfg)
 		assert.Nil(t, err)

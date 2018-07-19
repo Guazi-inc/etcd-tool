@@ -48,7 +48,7 @@ func ParseDSN(dsn string) *Config {
 
 func NewClient(dsn string) (*Client, error) {
 	cfg := ParseDSN(dsn)
-	if cfg == nil {
+	if cfg == nil || cfg.Addrs == "" {
 		return nil, errors.New("invalid conf")
 	}
 	var cli *clientv3.Client
