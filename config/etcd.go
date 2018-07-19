@@ -55,7 +55,7 @@ func InitETCD(addr string) {
 			panic(fmt.Sprintf("Failed to connect etcd %s, Error: %s", addr, err.Error()))
 		}
 		etcdClient = cli
-		go Watch()
+		go watch()
 		logrus.Infof("Init ETCD client with addr: %s", addr)
 
 		//init namespace
@@ -322,7 +322,7 @@ func fillConfig(result interface{}, ct reflect.Type, cv reflect.Value) error {
 	return nil
 }
 
-func Watch() {
+func watch() {
 	wc := etcdClient.Watch(context.Background(), delimiter, clientv3.WithPrefix())
 	for w := range wc {
 		for _, ev := range w.Events {
@@ -392,7 +392,7 @@ func CheckKeys(keys, keysWithPrefix []string) {
 
 	for _, k := range keysWithPrefix {
 		if m, err := etcdClient.GetWithPrefix(k); err != nil || len(m) == 0 {
-			panic(fmt.Sprintf("empty key with namespaceList: %s, Err: %s", k, err))
+			panic(fmt.Sprintf("empty key with prefix: %s, Err: %s", k, err))
 		}
 	}
 }
