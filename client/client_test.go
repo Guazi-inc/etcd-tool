@@ -3,14 +3,59 @@ package client
 import (
 	"fmt"
 	"testing"
+
+	"github.com/magiconair/properties/assert"
 )
 
 func TestParseConf(t *testing.T) {
-	ParseDSN("wby:p:s@w@localhost:2379,localhost:2479/call/s")
-	ParseDSN("localhost:2379/call/s")
-	ParseDSN("localhost:2379,localhost:2479")
-	ParseDSN("wby:p:s@w@localhost:2379/")
-	ParseDSN("wby:p:s@w@localhost:2379")
+	assert.Equal(t,
+		ParseDSN("wby:p:s@w@localhost:2379,localhost:2479/call/s"),
+		&Config{
+			Username: "wby",
+			Password: "p:s@w",
+			Addrs:    "localhost:2379,localhost:2479",
+			Path:     "/call/s/",
+		},
+	)
+	assert.Equal(t,
+		ParseDSN("localhost:2379/call/s"),
+		&Config{
+			Addrs: "localhost:2379",
+			Path:  "/call/s/",
+		},
+	)
+	assert.Equal(t,
+		ParseDSN("localhost:2379,localhost:2479"),
+		&Config{
+			Addrs: "localhost:2379,localhost:2479",
+			Path:  "/",
+		},
+	)
+	assert.Equal(t,
+		ParseDSN("@localhost:2379,localhost:2479"),
+		&Config{
+			Addrs: "localhost:2379,localhost:2479",
+			Path:  "/",
+		},
+	)
+	assert.Equal(t,
+		ParseDSN("wby:p:s@w@localhost:2379/"),
+		&Config{
+			Username: "wby",
+			Password: "p:s@w",
+			Addrs:    "localhost:2379",
+			Path:     "/",
+		},
+	)
+	assert.Equal(t,
+		ParseDSN("wby:p:s@w@localhost:2379"),
+		&Config{
+			Username: "wby",
+			Password: "p:s@w",
+			Addrs:    "localhost:2379",
+			Path:     "/",
+		},
+	)
 }
 
 func TestClient_Get(t *testing.T) {

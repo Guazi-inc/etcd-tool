@@ -25,7 +25,7 @@ type Config struct {
 
 // username:password@addr1,addr2/path
 func ParseDSN(dsn string) *Config {
-	rg, err := regexp.Compile(`^(?:(.*?):(.*)@)?(.*?)(/.*|$)`)
+	rg, err := regexp.Compile(`^(?:(?:(.*?):(.*))?@)?(.*?)(/.*|$)`)
 	if err != nil {
 		return nil
 	}

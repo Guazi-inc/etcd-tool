@@ -87,7 +87,7 @@ func TestGet(t *testing.T) {
 	{
 		var cfg struct {
 			Address string `json:"address"`
-			Prefix  string `json:"namespaceList"`
+			Prefix  string `json:"prefix"`
 			Timeout int32  `json:"timeout"`
 		}
 		err := Get("/call/redis", &cfg)
@@ -180,7 +180,7 @@ func TestGet2(t *testing.T) {
 }
 
 func TestGet3(t *testing.T) {
-	cfg := client.ParseDSN("localhost:2379")
+	cfg := client.ParseDSN("@localhost:2379")
 	t.Log(cfg)
 	path := strings.TrimSuffix(strings.TrimPrefix(cfg.Path, "/"), "/")
 	t.Log(path)
@@ -191,6 +191,7 @@ func TestGet3(t *testing.T) {
 }
 
 func TestGet4(t *testing.T) {
+	SetNamespace("finance")
 	type mainConfig struct {
 		Env            string            `json:"env"`
 		Redis          map[string]string `json:"redis"`

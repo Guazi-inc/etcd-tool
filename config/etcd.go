@@ -30,12 +30,13 @@ var (
 )
 
 var (
-	etcdClient    *client.Client
-	kvsMapCache   sync.Map
-	kvCache       sync.Map
-	watchFunc     sync.Map
-	initOnce      sync.Once
-	namespaceList []string
+	etcdClient          *client.Client
+	kvsMapCache         sync.Map
+	kvCache             sync.Map
+	watchFunc           sync.Map
+	initOnce            sync.Once
+	globalNamespaceList []string
+	globalNamespace     string
 )
 
 func init() {
@@ -56,15 +57,23 @@ func InitETCD(addr string) {
 		}
 		etcdClient = cli
 		go watch()
-		logrus.Infof("Init ETCD client with addr: %s", addr)
-
-		//init namespace
-		cfg := client.ParseDSN(addr)
-		if cfg.Path != "" && cfg.Path != delimiter {
-			namespaceList = strings.Split(strings.TrimSuffix(strings.TrimPrefix(cfg.Path, delimiter), delimiter), delimiter)
-		}
-		logrus.Infof("Init ETCD namespace: %+v", namespaceList)
+		logrus.Infof("ETCD - init client with addr: %s", addr)
 	})
+	//init globalNamespace
+	cfg := client.ParseDSN(addr)
+	SetNamespace(cfg.Path)
+}
+
+func SetNamespace(path string) {
+	if len(globalNamespaceList) > 0 {
+		logrus.Warnf("ETCD - namespace already set to %+v, won't set to %s", globalNamespace, path)
+		return
+	}
+	if path != "" && path != delimiter {
+		globalNamespace = path
+		globalNamespaceList = strings.Split(strings.TrimSuffix(strings.TrimPrefix(path, delimiter), delimiter), delimiter)
+	}
+	logrus.Infof("ETCD - init namespace: %+v", globalNamespace)
 }
 
 /* Get 获取配置
@@ -87,18 +96,25 @@ func GetInNamespace(key string, config interface{}, namespaceLevel int) error {
 	if namespaceLevel < 0 {
 		return ErrInvalidNpLevel
 	}
-	if namespaceLevel > len(namespaceList) {
-		logrus.Panicf("can't add %d level namespace, only has %d level: %+v", namespaceLevel, len(namespaceList), namespaceList)
+	if namespaceLevel > len(globalNamespaceList) {
+		errStr := fmt.Sprintf("can't add %d level namespace, only has %d level: %s", namespaceLevel, len(globalNamespaceList), globalNamespace)
+		//一级panic，>1级warn
+		if namespaceLevel == 1 {
+			panic(errStr)
+		}
+		logrus.Warn(errStr)
+		return errors.New(errStr)
+
 	}
 	if namespaceLevel > 0 {
-		key = fmt.Sprintf("%s%s%s", delimiter, strings.Join(namespaceList[:namespaceLevel], delimiter), key)
+		key = fmt.Sprintf("%s%s%s", delimiter, strings.Join(globalNamespaceList[:namespaceLevel], delimiter), key)
 	}
 	return get(key, config)
 }
 
 func get(key string, config interface{}) (errRet error) {
 	defer func() {
-		logrus.Infof("ETCD: get config with key: %s, Err: %+v", key, errRet)
+		logrus.Infof("ETCD - get config with key: %s, Err: %+v", key, errRet)
 	}()
 
 	if key = formatKey(key); key == "" {
