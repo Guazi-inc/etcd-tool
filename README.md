@@ -23,8 +23,12 @@
 
 
 ### SDK使用
-#### 设置etcd的连接地址: username:password@addr1,addr2
-方案一：环境变量 
+#### 设置etcd的连接地址: username:password@addr1,addr2/namespace
+```
+example: root:rootpw@localhost:2379,localhost2479/my_group/my_project
+```
+
+方案一：环境变量
 ```shell
 ETCD_ADDR=localhost:2379
 ```
@@ -39,16 +43,25 @@ config.InitETCD("localhost:2379")
 ```go
 import "github.com/Guazi-inc/etcd-tool/config"
 
-
 var cfg struct{
     Address string `json:"address"`
     Prefix  string `json:"prefix"`
 }
 
+//在根目录下读取配置，full_key: /redis
 err := config.Get("/redis", &cfg)
-
 ```
 
+##### Get Config In Namespace
+```
+//在一级namespace下读取配置，full_key: /my_group/redis
+err := config.GetInNamespace("/redis", &cfg, 1)
+
+//在二级namespace下读取配置，full_key: /my_group/my_project/redis
+err = config.GetInNamespace("/redis", &cfg, 2)
+
+//更多级的namespace...
+```
 
 #### Watch机制
     config.Get方法本身已经使用watch机制对数据做了缓存，为了减少反射带来的开销，以及定制化的需求提供自定义的watch入口，可以在某些key变化时执行自定义的方法
