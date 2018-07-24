@@ -60,8 +60,9 @@ func InitETCD(addr string) {
 		logrus.Infof("ETCD - init client with addr: %s", addr)
 	})
 	//init globalNamespace
-	cfg := client.ParseDSN(addr)
-	SetNamespace(cfg.Path)
+	if cfg := client.ParseDSN(addr); cfg != nil {
+		SetNamespace(cfg.Path)
+	}
 }
 
 func SetNamespace(path string) {
